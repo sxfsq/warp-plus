@@ -29,7 +29,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.24'
           check-latest: true
 
       - name: Setup `ko`
@@ -53,4 +53,5 @@ jobs:
       - name: Build and push image
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
-        run: ko build --platform "${PLATFORMS}" --bare --tags $(echo $TAGS | tr ' ' ',')
+          GOFLAGS: "-ldflags=-checklinkname=0"
+        run: ko build ./cmd/warp-plus --platform "${PLATFORMS}" --bare --tags $(echo $TAGS | tr ' ' ',')

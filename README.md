@@ -13,21 +13,8 @@ Warp-Plus is an open-source implementation of Cloudflare's Warp, enhanced with P
 
 ### Prerequisites
 
-- You can download prebuilt binaries or compile it with Go (You MUST use go 1.22)
+- [Download the latest version from the releases page](https://github.com/bepass-org/warp-plus/releases)
 - Basic understanding of VPN and proxy configurations
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/bepass-org/warp-plus.git
-   cd warp-plus
-   ```
-
-2. Build the project:
-   ```bash
-   go build
-   ```
 
 ### Usage
 
@@ -36,26 +23,33 @@ NAME
   warp-plus
 
 FLAGS
-  -4                      only use IPv4 for random warp endpoint
-  -6                      only use IPv6 for random warp endpoint
-  -v, --verbose           enable verbose logging
-  -b, --bind STRING       socks bind address (default: 127.0.0.1:8086)
-  -e, --endpoint STRING   warp endpoint
-  -k, --key STRING        warp key
-      --gool              enable gool mode (warp in warp)
-      --cfon              enable psiphon mode (must provide country as well)
-      --country STRING    psiphon country code (valid values: [AT BE BG BR CA CH CZ DE DK EE ES FI FR GB HU IE IN IT JP LV NL NO PL RO RS SE SG SK UA US]) (default: AT)
-      --scan              enable warp scanning
-      --rtt DURATION      scanner rtt limit (default: 1s)
-  -c, --config STRING     path to config file
+  -4                       only use IPv4 for random warp endpoint
+  -6                       only use IPv6 for random warp endpoint
+  -v, --verbose            enable verbose logging
+  -b, --bind STRING        socks bind address (default: 127.0.0.1:8086)
+  -e, --endpoint STRING    warp endpoint
+  -k, --key STRING         warp key
+      --dns STRING         DNS address (default: 1.1.1.1)
+      --gool               enable gool mode (warp in warp)
+      --cfon               enable psiphon mode (must provide country as well)
+      --country STRING     psiphon country code (valid values: [AT AU BE BG CA CH CZ DE DK EE ES FI FR GB HR HU IE IN IT JP LV NL NO PL PT RO RS SE SG SK US]) (default: AT)
+      --scan               enable warp scanning
+      --rtt DURATION       scanner rtt limit (default: 1s)
+      --cache-dir STRING   directory to store generated profiles
+      --fwmark UINT        set linux firewall mark for tun mode (requires sudo/root/CAP_NET_ADMIN) (default: 0)
+      --reserved STRING    override wireguard reserved value (format: '1,2,3')
+      --wgconf STRING      path to a normal wireguard config
+      --test-url STRING    connectivity test url (default: http://connectivity.cloudflareclient.com/cdn-cgi/trace)
+  -c, --config STRING      path to config file
+      --version            displays version number
 ```
 
 ### Country Codes for Psiphon
 
 - Austria (AT)
+- Australia (AU)
 - Belgium (BE)
 - Bulgaria (BG)
-- Brazil (BR)
 - Canada (CA)
 - Switzerland (CH)
 - Czech Republic (CZ)
@@ -66,6 +60,7 @@ FLAGS
 - Finland (FI)
 - France (FR)
 - United Kingdom (GB)
+- Croatia (HR)
 - Hungary (HU)
 - Ireland (IE)
 - India (IN)
@@ -75,27 +70,27 @@ FLAGS
 - Netherlands (NL)
 - Norway (NO)
 - Poland (PL)
+- Portugal (PT)
 - Romania (RO)
 - Serbia (RS)
 - Sweden (SE)
 - Singapore (SG)
 - Slovakia (SK)
-- Ukraine (UA)
 - United States (US)
-
+![0](https://raw.githubusercontent.com/Ptechgithub/configs/main/media/line.gif)
 ### Termux
 
 ```
-bash <(curl -fsSL https://raw.githubusercontent.com/Ptechgithub/wireguard-go/master/termux.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/bepass-org/warp-plus/master/termux.sh)
 ```
 ![1](https://github.com/Ptechgithub/configs/blob/main/media/18.jpg?raw=true)
 
-- اگه حس کردی کانکت نمیشه یا خطا میده دستور `rm -rf stuff` رو بزن و مجدد warp رو وارد کن.
-- بعد از نصب برای اجرای مجدد فقط کافیه که `warp` یا `usef` یا `./warp` را وارد کنید . 
+- اگه حس کردی کانکت نمیشه یا خطا میده دستور `rm -rf .cache/warp-plus` رو بزن و مجدد warp رو وارد کن.
+- بعد از نصب برای اجرای مجدد فقط کافیه که `warp` یا `usef` یا `./warp` یا `warp-plus`را وارد کنید. همش یکیه هیچ فرقی ندارد.
 - اگر با 1 نصب نشد و خطا گرفتید ابتدا یک بار 3 را بزنید تا `Uninstall` شود سپس عدد 2 رو انتخاب کنید یعنی Arm.
 - برای نمایش راهنما ` warp -h` را وارد کنید. 
 - ای پی و پورت `127.0.0.1:8086`پروتکل socks
-- در روش warp به warp plus مقدار account id را وارد میکنید و با این کار هر 20 ثانیه 1 GB به اکانت شما اضافه میشود. 
+- در روش تبدیل اکانت  warp به warp plus (گزینه 6) مقدار ID را وارد میکنید. پس از اجرای warp دو اکانت برای شما ساخته شده که پس از انتخاب گزینه 6 خودش مقدار ID هر دو اکانت را پیدا میکند و شما باید هر بار یکی را انتخاب کنید و یا میتوانید با انتخاب manual مقدار ID دیگری را وارد کنید (مثلا برای خود برنامه ی 1.1.1.1 یا جای دیگر) با این کار هر 20 ثانیه 1 GB به اکانت شما اضافه میشود. و اکانت شما از حالت رایگان به پلاس تبدیل میشود. 
 - برای تغییر  لوکیشن با استفاده از سایفون از طریق منو یا به صورت دستی (برای مثال به USA  از دستور  زیر استفاده کنید) 
 - `warp --cfon --country US`
 - برای اسکن ای پی سالم وارپ از دستور `warp --scan` استفاده کنید. 

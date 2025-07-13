@@ -1,4 +1,7 @@
-warp-plus
-warp-plus.exe
+/warp-plus
+/warp-plus.exe
+/warp-scan
+/warp-scan.exe
 .idea
 stuff/
+.DS_Store

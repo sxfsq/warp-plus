@@ -19,10 +19,11 @@ type ScanOptions struct {
 }
 
 func RunScan(ctx context.Context, l *slog.Logger, opts ScanOptions) (result []ipscanner.IPInfo, err error) {
-	// new scanner
+	ctx, cancel := context.WithTimeout(ctx, 1*time.Minute)
+	defer cancel()
+
 	scanner := ipscanner.NewScanner(
 		ipscanner.WithLogger(l.With(slog.String("subsystem", "scanner"))),
-		ipscanner.WithWarpPing(),
 		ipscanner.WithWarpPrivateKey(opts.PrivateKey),
 		ipscanner.WithWarpPeerPublicKey(opts.PublicKey),
 		ipscanner.WithUseIPv4(opts.V4),
@@ -30,9 +31,6 @@ func RunScan(ctx context.Context, l *slog.Logger, opts ScanOptions) (result []ip
 		ipscanner.WithMaxDesirableRTT(opts.MaxRTT),
 		ipscanner.WithCidrList(warp.WarpPrefixes()),
 	)
-
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
 
 	scanner.Run(ctx)
 

@@ -13,7 +13,7 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/bepass-org/warp-plus/ipscanner/internal/statute"
+	"github.com/bepass-org/warp-plus/ipscanner/statute"
 	"github.com/bepass-org/warp-plus/warp"
 	"github.com/flynn/noise"
 	"golang.org/x/crypto/blake2s"
@@ -47,17 +47,16 @@ type WarpPing struct {
 	PeerPublicKey string
 	PresharedKey  string
 	IP            netip.Addr
-
-	opts statute.ScannerOptions
 }
 
 func (h *WarpPing) Ping() statute.IPingResult {
 	return h.PingContext(context.Background())
 }
 
-func (h *WarpPing) PingContext(_ context.Context) statute.IPingResult {
+func (h *WarpPing) PingContext(ctx context.Context) statute.IPingResult {
 	addr := netip.AddrPortFrom(h.IP, warp.RandomWarpPort())
 	rtt, err := initiateHandshake(
+		ctx,
 		addr,
 		h.PrivateKey,
 		h.PeerPublicKey,
@@ -117,15 +116,21 @@ func ephemeralKeypair() (noise.DHKey, error) {
 	}, nil
 }
 
-func randomInt(min, max int) int {
-	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(max-min+1)))
+func randomInt(min, max uint64) uint64 {
+	rangee := max - min
+	if rangee < 1 {
+		return 0
+	}
+
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(rangee)))
 	if err != nil {
 		panic(err)
 	}
-	return int(nBig.Int64()) + min
+
+	return min + n.Uint64()
 }
 
-func initiateHandshake(serverAddr netip.AddrPort, privateKeyBase64, peerPublicKeyBase64, presharedKeyBase64 string) (time.Duration, error) {
+func initiateHandshake(ctx context.Context, serverAddr netip.AddrPort, privateKeyBase64, peerPublicKeyBase64, presharedKeyBase64 string) (time.Duration, error) {
 	staticKeyPair, err := staticKeypair(privateKeyBase64)
 	if err != nil {
 		return 0, err
@@ -207,25 +212,26 @@ func initiateHandshake(serverAddr netip.AddrPort, privateKeyBase64, peerPublicKe
 	}
 	defer conn.Close()
 
-	// Generate a random number of packets between 5 and 10
-	numPackets := randomInt(1, 2)
-	for i := 0; i < numPackets; i++ {
-		// Generate a random packet size between 10 and 40 bytes
-		packetSize := randomInt(1, 100)
-		randomPacket := make([]byte, packetSize)
-		_, err := rand.Read(randomPacket)
-		if err != nil {
-			return 0, fmt.Errorf("error generating random packet: %w", err)
-		}
+	numPackets := randomInt(20, 50)
+	randomPacket := make([]byte, 100)
+	for i := uint64(0); i < numPackets; i++ {
+		select {
+		case <-ctx.Done():
+			return 0, ctx.Err()
+		default:
+			packetSize := randomInt(40, 100)
+			_, err := rand.Read(randomPacket[:packetSize])
+			if err != nil {
+				return 0, fmt.Errorf("error generating random packet: %w", err)
+			}
 
-		// Send the random packet
-		_, err = conn.Write(randomPacket)
-		if err != nil {
-			return 0, fmt.Errorf("error sending random packet: %w", err)
-		}
+			_, err = conn.Write(randomPacket[:packetSize])
+			if err != nil {
+				return 0, fmt.Errorf("error sending random packet: %w", err)
+			}
 
-		// Wait for a random duration between 200 and 500 milliseconds
-		time.Sleep(time.Duration(randomInt(200, 500)) * time.Millisecond)
+			time.Sleep(time.Duration(randomInt(80, 150)) * time.Millisecond)
+		}
 	}
 
 	_, err = initiationPacket.WriteTo(conn)
@@ -279,8 +285,6 @@ func NewWarpPing(ip netip.Addr, opts *statute.ScannerOptions) *WarpPing {
 		PeerPublicKey: opts.WarpPeerPublicKey,
 		PresharedKey:  opts.WarpPresharedKey,
 		IP:            ip,
-
-		opts: *opts,
 	}
 }
 

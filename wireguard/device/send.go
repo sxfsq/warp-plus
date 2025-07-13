@@ -79,38 +79,69 @@ func (elem *QueueOutboundElement) clearPointers() {
 	elem.peer = nil
 }
 
-func randomInt(min, max int) int {
-	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(max-min+1)))
+func randomInt(min, max uint64) uint64 {
+	rangee := max - min
+	if rangee < 1 {
+		return 0
+	}
+
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(rangee)))
 	if err != nil {
 		panic(err)
 	}
-	return int(nBig.Int64()) + min
+
+	return min + n.Uint64()
 }
 
 func (peer *Peer) sendRandomPackets() {
-	// Generate a random number of packets between 5 and 10
-	numPackets := randomInt(8, 15)
-	randomPacket := make([]byte, 100)
-	for i := 0; i < numPackets; i++ {
+	var Wheader = []byte{}
+	switch peer.trick {
+	case "t1":
+	case "t2":
+		clist := []byte{0xDC, 0xDE, 0xD3, 0xD9, 0xD0, 0xEC, 0xEE, 0xE3}
+		Wheader = []byte{
+			clist[randomInt(0, uint64(len(clist)-1))],
+			0x00, 0x00, 0x00, 0x01, 0x08,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x44, 0xD0,
+		}
+		_, err := rand.Read(Wheader[6:14])
+		if err != nil {
+			panic(err)
+		}
+	// default:
+	// 	if len(tm)%2 != 0 {
+	// 		tm = tm + "0"
+	// 	}
+	// 	decodedBytes, err := hex.DecodeString(tm)
+	// 	if err == nil {
+	// 		Wheader = decodedBytes
+	// 	}
+	default:
+		return
+	}
+
+	numPackets := randomInt(20, 50)
+	maxpLen := uint64(len(Wheader) + 120)
+	randomPacket := make([]byte, maxpLen)
+	for i := uint64(0); i < numPackets; i++ {
 		if peer.device.isClosed() || !peer.isRunning.Load() {
 			return
 		}
 
-		// Generate a random packet size between 10 and 40 bytes
-		packetSize := randomInt(40, 100)
-		_, err := rand.Read(randomPacket[:packetSize])
+		packetSize := randomInt(uint64(len(Wheader)+10), maxpLen)
+		_, err := rand.Read(randomPacket[len(Wheader):packetSize])
+		if err != nil {
+			return
+		}
+		copy(randomPacket[0:], Wheader)
+
+		err = peer.SendBuffers([][]byte{randomPacket[:packetSize]}, true)
 		if err != nil {
 			return
 		}
 
-		// Send the random packet
-		err = peer.SendBuffers([][]byte{randomPacket[:packetSize]})
-		if err != nil {
-			return
-		}
-
-		// Wait for a random duration between 20 and 250 milliseconds
-		<-time.After(time.Duration(randomInt(20, 250)) * time.Millisecond)
+		time.Sleep(time.Duration(randomInt(80, 150)) * time.Millisecond)
 	}
 }
 
@@ -118,10 +149,9 @@ func (peer *Peer) sendRandomPackets() {
  */
 func (peer *Peer) SendKeepalive() {
 	if len(peer.queue.staged) == 0 && peer.isRunning.Load() {
-		// Send some random packets on every keepalive
-		if peer.trick {
+		if peer.trick != "" && peer.trick != "t0" {
 			peer.device.log.Verbosef("%v - Running tricks! (keepalive)", peer)
-			go peer.sendRandomPackets()
+			peer.sendRandomPackets()
 		}
 
 		elem := peer.device.NewOutboundElement()
@@ -157,10 +187,9 @@ func (peer *Peer) SendHandshakeInitiation(isRetry bool) error {
 		return nil
 	}
 
-	// send some random packets on handshake
-	if peer.trick {
+	if peer.trick != "" && peer.trick != "t0" {
 		peer.device.log.Verbosef("%v - Running tricks! (handshake)", peer)
-		go peer.sendRandomPackets()
+		peer.sendRandomPackets()
 	}
 
 	peer.handshake.lastSentHandshake = time.Now()
@@ -183,7 +212,7 @@ func (peer *Peer) SendHandshakeInitiation(isRetry bool) error {
 	peer.timersAnyAuthenticatedPacketTraversal()
 	peer.timersAnyAuthenticatedPacketSent()
 
-	err = peer.SendBuffers([][]byte{packet})
+	err = peer.SendBuffers([][]byte{packet}, false)
 	if err != nil {
 		peer.device.log.Errorf("%v - Failed to send handshake initiation: %v", peer, err)
 	}
@@ -222,7 +251,7 @@ func (peer *Peer) SendHandshakeResponse() error {
 	peer.timersAnyAuthenticatedPacketSent()
 
 	// TODO: allocation could be avoided
-	err = peer.SendBuffers([][]byte{packet})
+	err = peer.SendBuffers([][]byte{packet}, false)
 	if err != nil {
 		peer.device.log.Errorf("%v - Failed to send handshake response: %v", peer, err)
 	}
@@ -570,7 +599,7 @@ func (peer *Peer) RoutineSequentialSender(maxBatchSize int) {
 		peer.timersAnyAuthenticatedPacketTraversal()
 		peer.timersAnyAuthenticatedPacketSent()
 
-		err := peer.SendBuffers(bufs)
+		err := peer.SendBuffers(bufs, false)
 		if dataSent {
 			peer.timersDataSent()
 		}
